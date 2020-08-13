@@ -3,11 +3,11 @@ import socket
 import sys
 import collections
 import time
-import Queue
+import queue as Queue
 import threading
 
 from threading import Thread
-from SocketServer import ThreadingMixIn
+from socketserver import ThreadingMixIn
  
 class ClientThread(Thread):
  
@@ -16,7 +16,7 @@ class ClientThread(Thread):
         self.socket = socket
         self.ip = ip
         self.port = port
-        print "New thread started"
+        print("New thread started")
       
        
  
@@ -28,32 +28,36 @@ class ClientThread(Thread):
         status = 0   
         userpresent = 0     
         while True:
-            self.socket.send(str(TIME_OUT))
+            self.socket.send(str(TIME_OUT).encode('utf-8'))
             data2 = "successful"
             while userpresent == 0:
                 num = 0
-                userdata = self.socket.recv(2048)
+                userdata = self.socket.recv(2048).decode('utf-8')
+                #print('\nprinting usrdata : ', userdata)
                 
                
-                if not userdata: break
+                if not userdata: 
+                    break
     
-                line = open('user_pass.txt').readlines() 
+                line = open('user_pass.txt').readlines()
+                #print('\nprinting line : ', line)
                 for userpass in line:
                     user = userpass.split(" ")
+                    print('userdata : {}, user[0] : {}, condition : {}'.format(userdata, user[0], userdata==user[0]))
                     if userdata == user[0]:
                         userpresent = 1
                 if userpresent == 0:        
                         
                     data2 = "invalid login"
                     status = 0
-                    print data2
-                    self.socket.send(data2)
+                    print(data2)
+                    self.socket.send(data2.encode('utf-8'))
                     
                     continue
                 else:
                     
                     for p in blockusers:
-                        print "blockusers: " , p
+                        print("blockusers: " , p)
                         val = p.partition(" ")
                         valin = val[2].partition(" ")
                         curtime =time.time()
@@ -62,35 +66,35 @@ class ClientThread(Thread):
                             status = 2
                             
                     for p in curusers:
-                        print "curusers:", p
+                        print("curusers:", p)
                         if userdata == p:
                             data2 = "same user"
                             status = 1
-                            print data2
+                            print(data2)
                     if data2 == " blocked ":
                     
-                        self.socket.send(data2)
+                        self.socket.send(data2.encode('utf-8'))
                         status = 2
                     elif data2 == "same user":
-                        self.socket.send(data2)
+                        self.socket.send(data2.encode('utf-8'))
                         status = 1
                         
                     
             if data2 == "successful":
-                self.socket.send(data2)
+                self.socket.send(data2.encode('utf-8'))
                 passpresent = 0
                 while status == 0:
-                    passdata = self.socket.recv(2048)
-                    validity = userdata + " " + passdata
+                    passdata = self.socket.recv(2048).decode('utf-8')
+                    validity = str(userdata) + " " + str(passdata)
                     
                     if (validity not in open('user_pass.txt').read()):  
                         data2 = "invalid password"
-                        print data2   
+                        print(data2)
                         num = num + 1       
                         if num == 3:
                             status = 2
-                            self.socket.send(data2)
-                            print "breaking"
+                            self.socket.send(data2.encode('utf-8'))
+                            print("breaking")
                             break
                                     
                                     
@@ -98,11 +102,11 @@ class ClientThread(Thread):
                             status = 0 
                             
                            
-                            self.socket.send(data2)
+                            self.socket.send(data2.encode('utf-8'))
                             
                     else:
                         data2 = "successful"
-                        self.socket.send(data2)
+                        self.socket.send(data2.encode('utf-8'))
                         for p in offlineusers:
                             t = p.partition(" ")
                             if t[0] == userdata:
@@ -113,7 +117,7 @@ class ClientThread(Thread):
                         lock.acquire()        
                         curusers.append(userdata)
                         lock.release()
-                        print userdata + " logged in"
+                        print(userdata + " logged in")
                         status = 1  # 0 for offline , 1 for online , 2 for blocked 
                         logtime=time.time()
                         fd = self.socket.fileno()
@@ -135,7 +139,7 @@ class ClientThread(Thread):
                 lock.acquire()
                 del sendqueues[fd]
                 lock.release()
-                print blockuserdata, " blocked for 60 seconds"
+                print(blockuserdata, " blocked for 60 seconds")
                 sys.exit()
                 
                 
@@ -143,7 +147,7 @@ class ClientThread(Thread):
                 
                 while True:     
                     self.socket.settimeout(TIME_OUT)
-                    command = self.socket.recv(2048)
+                    command = self.socket.recv(2048).decode('utf-8')
                     if "send " in command:
                         content = command.partition(" ")
                         contentinner = content[2].partition(" ")
@@ -178,7 +182,7 @@ class ClientThread(Thread):
                             
                             replymsg = "message sent"
                             
-                        self.socket.send(replymsg)
+                        self.socket.send(replymsg.encode('utf-8'))
                             
                     elif "broadcast user" in command:
                         content = command.split(" ")
@@ -200,13 +204,13 @@ class ClientThread(Thread):
                                         
                                
                         for p in receivers:
-                            print p
+                            print(p)
                             errorflag = 1 
                             for z in userfdmap:
                                 zi = z.partition(" ")
                                 if p == zi[0]:
                                     receiverfd = int(zi[2])
-                                    print receiverfd
+                                    print(receiverfd)
                                     errorflag = 0
                                     lock.acquire()
                                     sendqueues[receiverfd].put(sendmessage)
@@ -216,7 +220,7 @@ class ClientThread(Thread):
                             replymsg = "Cannot broadcast message to all , few users offline"
                         else:
                             replymsg = "message broadcasted"
-                            self.socket.send(replymsg)              
+                            self.socket.send(replymsg.encode('utf-8'))              
                                           
                           
                                 
@@ -231,7 +235,7 @@ class ClientThread(Thread):
                                  file.seek(0)     
                                  for msg in file:
                                      sendmsg = sendmsg + "\n" + msg
-                             self.socket.send(sendmsg)      
+                             self.socket.send(sendmsg.encode('utf-8'))      
                         
                                     
                                 
@@ -245,32 +249,32 @@ class ClientThread(Thread):
                         
                             if p != userdata:
                                 online = online + p + " "
-                        self.socket.send(online)  
+                        self.socket.send(online.encode('utf-8'))  
                     elif "wholast" in command :
                         div = command.partition(" ")
-                        print div[0]
-                        print div[2]
+                        print(div[0])
+                        print(div[2])
                         lastnumber = int(div[2])*60
                         #lastnumber = float(lastnumber)*60.0
                         offline = " "
                         for p in offlineusers:
-                            print p
+                            print(p)
                             t = p.partition(" ")
                             curtime = time.time()
                             if ( curtime - float(lastnumber) ) <= float(t[2]):
                                 offline = offline + t[0] + " "
                         
-                        self.socket.send(offline)  
+                        self.socket.send(offline.encode('utf-8'))  
                     elif command == "logout":        
                         curusers.remove(userdata)
                         offlinedata = userdata + " " + str(logtime)
                         lock.acquire()
                         offlineusers.append(offlinedata)
                         lock.release()
-                        print offlinedata , "removed"
+                        print(offlinedata , "removed")
                         logoutack = "logged out" 
-                        self.socket.send(logoutack)
-                        print "[+] thread disconnected for "+ip+":"+str(port)
+                        self.socket.send(logoutack.encode('utf-8'))
+                        print("[+] thread disconnected for "+ip+":"+str(port))
                         fd = self.socket.fileno()
                         lock.acquire()
                         del sendqueues[fd]
@@ -288,10 +292,10 @@ class ClientThread(Thread):
                               q.put(msg)
                           lock.release()      
                           ack = "broadcasted"      
-                          self.socket.send(ack)
+                          self.socket.send(ack.encode('utf-8'))
                     else:
                           error = "Invalid command. Please enter a proper one"
-                          self.socket.send(error)
+                          self.socket.send(error.encode('utf-8'))
                                       
                           
                           
@@ -302,8 +306,8 @@ class ClientThread(Thread):
         lock.acquire()
         offlineusers.append(offlinedata)
         lock.release()
-        print offlinedata , "removed"
-        print "logged out"
+        print(offlinedata , "removed")
+        print("logged out")
         sys.exit()
         
 class ClientThreadread(Thread):
@@ -312,7 +316,7 @@ class ClientThreadread(Thread):
         
         self.sock = sock
         
-        print "New thread for chat relying started"
+        print("New thread for chat relying started")
        
        
        
@@ -326,10 +330,10 @@ class ClientThreadread(Thread):
          tcpsock2.listen(1)
          (conn2, addr) = tcpsock2.accept()
          welcomemsg = "hi"
-         conn2.send(welcomemsg)
+         conn2.send(welcomemsg.encode('utf-8'))
          chat = "initial"
-         print "ind here is"
-         print self.sock.fileno()
+         print("ind here is")
+         print(self.sock.fileno())
          while True:
              for p in userfdmap:           #userfdmap contains mapping between usernames and their socket's file despcriptor which we use as index to access their respective queue
                  if str(self.sock.fileno()) in p:
@@ -342,13 +346,13 @@ class ClientThreadread(Thread):
              try:
                  chat = sendqueues[self.sock.fileno()].get(False)
                 
-                 print chat
-                 conn2.send(chat)     
+                 print(chat)
+                 conn2.send(chat.encode('utf-8'))     
              except Queue.Empty:
                 
                  chat = "none" 
                  time.sleep(2)
-             except KeyError, e:
+             except KeyError as e:
                  pass
                      
                    
@@ -371,9 +375,9 @@ global command
 command = ""                
 
 sendqueues = {}        
-TCP_IP = '0.0.0.0'
+TCP_IP = '127.0.0.1'
 TCP_PORT = int(sys.argv[1])
-TCP_PORT2 = 125
+TCP_PORT2 = int(sys.argv[2]) #125
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 TIME_OUT = 1800.0 #seconds   - For time_out    Block_time is 60 seconds
 BLOCK_TIME = 60.0
@@ -401,7 +405,7 @@ threads = []
  
 while True:
     tcpsock.listen(6)
-    print "Waiting for incoming connections..."
+    print("Waiting for incoming connections...")
     (conn, (ip,port)) = tcpsock.accept()
     q = Queue.Queue()
     lock.acquire()
@@ -411,7 +415,7 @@ while True:
     lock.release()
     
            
-    print "new thread with " , conn.fileno()
+    print("new thread with " , conn.fileno())
     newthread = ClientThread(conn,ip,port)
     newthread.daemon = True
     newthread.start()
@@ -427,4 +431,4 @@ while True:
 for t in threads:
     t.join()
     
-    print "eND"
+    print("eND")
